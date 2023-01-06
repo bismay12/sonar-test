@@ -56,8 +56,8 @@ steps:
   - name: 'gcr.io/$PROJECT_ID/sonar-scanner:latest'
     args:
     - '-Dsonar.host.url=http://35.200.250.32:9000 '
-    - '-Dsonar.login=sqp_4b13cba384614639bae67902515dec4b9653b97d'
-    - '-Dsonar.projectKey=cicd-sonar-test1'
+    - '-Dsonar.login=sqp_64dbfde7eb298ca539c330564dbfdfa7da03992d'
+    - '-Dsonar.projectKey=sonar-test'
     - '-Dsonar.sources=.'
 
 #Add dags to Dags folder
