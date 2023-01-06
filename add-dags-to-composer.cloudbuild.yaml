@@ -50,6 +50,10 @@ steps:
   - name: python
     entrypoint: pip
     args: ["install","coverage"]
+      - '-c'
+      - |
+      - coverage run -m pytest
+      - coverage xml
 
 
   # Static code Analysis
@@ -59,6 +63,7 @@ steps:
     - '-Dsonar.login=sqp_64dbfde7eb298ca539c330564dbfdfa7da03992d'
     - '-Dsonar.projectKey=sonar-test'
     - '-Dsonar.sources=.'
+    - '-Dsonar.python.coverage.reportPaths=coverage.xml
 
 #Add dags to Dags folder
   - name: gcr.io/cloud-builders/gcloud
