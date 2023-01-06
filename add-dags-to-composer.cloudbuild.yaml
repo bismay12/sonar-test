@@ -50,6 +50,11 @@ steps:
   - name: python
     entrypoint: pip
     args: ["install","coverage"]
+
+  # install coverage
+  - name: python
+    entrypoint: python
+    args:
       - '-c'
       - |
       - coverage run -m pytest
