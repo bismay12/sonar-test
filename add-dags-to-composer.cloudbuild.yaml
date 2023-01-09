@@ -1,27 +1,28 @@
 steps:
 
-  - name: 'gcr.io/$PROJECT_ID/python-cloudbuild' 
-    entrypoint: '/bin/bash'
-    args: ['-c','virtualenv /workspace/venv' ]
+steps:
+  # install dependencies
+  - name: python:3.8-slim
+    entrypoint: pip
+    args: ["install", "-r", "requirements.txt", "-c", "constraints.txt", "--user"]
+
+  - name: python:3.8-slim
+    entrypoint: pip
+    args: ["install", "-r", "requirements-test.txt", "--user"]
+
+  # run in python 3.8 which is latest version in Cloud Composer
+  - name: python:3.8-slim
+    entrypoint: python3.8
+    args: ["-m", "pytest", "-s", "dags/"]
+
+  # install dependencies
+  - name: python
+    entrypoint: pip
+    args: ["install", "-r", "utils/requirements.txt", "--user"]
     
-  # install dependencies
   - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
     entrypoint: 'venv/bin/pip'
-    args: ["install", "-r", "requirements.txt", "-c", "constraints.txt"]
-
-  - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
-    entrypoint: 'venv/bin/pip'
-    args: ["install", "-r", "requirements-test.txt"]
-
-#   # run in python 3.8 which is latest version in Cloud Composer
-#   - name:'gcr.io/$PROJECT_ID/python-cloudbuild'
-#     entrypoint: 'venv/bin/python'
-#     args: ["-m", "pytest", "-s", "dags/"]
-
-  # install dependencies
-  - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
-    entrypoint: 'venv/bin/pip'
-    args: ["install", "-r", "utils/requirements.txt"]
+    args: ['install', '-V', '-r', 'requirements1.txt']
     
   - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
     entrypoint: 'venv/bin/python'
