@@ -1,109 +1,61 @@
-substitutions:
-  _COMPOSER_ENV_NAME: ci-cd-deploy
-  _COMPOSER_REGION: asia-south1
-
-# # Access the id_github file from Secret Manager, and setup SSH
 steps:
-#   - name: 'gcr.io/cloud-builders/git'
-#     secretEnv: ['SSH_KEY']
-#     entrypoint: 'bash'
+
+  - name: 'gcr.io/$PROJECT_ID/python-cloudbuild' 
+    entrypoint: '/bin/bash'
+    args: ['-c','virtualenv /workspace/venv' ]
+    
+  # install dependencies
+  - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
+    entrypoint: 'venv/bin/pip'
+    args: ["install", "-r", "requirements.txt", "-c", "constraints.txt", "--user"]
+
+  - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
+    entrypoint: 'venv/bin/pip'
+    args: ["install", "-r", "requirements-test.txt", "--user"]
+
+#   # run in python 3.8 which is latest version in Cloud Composer
+#   - name:'gcr.io/$PROJECT_ID/python-cloudbuild'
+#     entrypoint: 'venv/bin/python'
+#     args: ["-m", "pytest", "-s", "dags/"]
+
+  # install dependencies
+  - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
+    entrypoint: 'venv/bin/pip'
+    args: ["install", "-r", "utils/requirements.txt", "--user"]
+    
+  - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
+    entrypoint: 'venv/bin/python'
+    args: ['-m', 'pytest' , '--cov=dags','--cov-report=xml','-v']
+
+#   # install coverage
+#   - name: python
+#     entrypoint: pip
+#     args: ["install","coverage"]
+
+#   # install coverage
+#   - name: python
+#     entrypoint: python
 #     args:
 #       - '-c'
 #       - |
-#         echo "$$SSH_KEY" >> /root/.ssh/id_rsa
-#         chmod 400 /root/.ssh/id_rsa
-#         ssh-keyscan -t rsa github.com > known_hosts.github
-#         cp known_hosts.github /root/.ssh/known_hosts
-#     volumes:
-#       - name: ssh
-#         path: /root/.ssh
-        
-# # Clone the repository
-#   - name: 'gcr.io/cloud-builders/git'
+#       - coverage run *.py
+#       - coverage xml
+
+#   - name: python:3.7
+#     entrypoint: python3
+#     id: RUN-COVERAGE-TESTS
 #     args:
-#     - clone
-#     - git@github.com:bismay12/cicd-sonar.git
-#     volumes:
-#     - name: 'ssh'
-#       path: /root/.ssh
-
-  # install dependencies
-  - name: python:3.8-slim
-    entrypoint: pip
-    args: ["install", "-r", "requirements.txt", "-c", "constraints.txt", "--user"]
-
-  - name: python:3.8-slim
-    entrypoint: pip
-    args: ["install", "-r", "requirements-test.txt", "--user"]
-
-  # run in python 3.8 which is latest version in Cloud Composer
-  - name: python:3.8-slim
-    entrypoint: python3.8
-    args: ["-m", "pytest", "-s", "dags/"]
-
-  # install dependencies
-  - name: python
-    entrypoint: pip
-    args: ["install", "-r", "utils/requirements.txt", "--user"]
-
-  # install coverage
-  - name: python
-    entrypoint: pip
-    args: ["install","coverage"]
-
-  # install coverage
-  - name: python
-    entrypoint: python
-    args:
-      - '-c'
-      - |
-      - coverage run *.py
-      - coverage xml
-
-  - name: python:3.7
-    entrypoint: python3
-    id: RUN-COVERAGE-TESTS
-    args:
-      - '-c'
-      - python3 -m pytest --cov=tests/ --cov-report xml:coverag1.xml
+#       - '-c'
+#       - python3 -m pytest --cov=tests/ --cov-report xml:coverag1.xml
 
 
   # Static code Analysis
   - name: 'gcr.io/$PROJECT_ID/sonar-scanner:latest'
     args:
     - '-Dsonar.host.url=http://35.200.250.32:9000 '
-    - '-Dsonar.login=sqp_64dbfde7eb298ca539c330564dbfdfa7da03992d'
-    - '-Dsonar.projectKey=sonar-test'
+    - '-Dsonar.login=sqp_78d4c4d00e71fc99a703f80d38fee3b6618ee95a'
+    - '-Dsonar.projectKey=sonar-test-1 '
     - '-Dsonar.sources=.'
     - '-Dsonar.python.coverage.reportPaths=coverage.xml'
 
-# #Add dags to Dags folder
-#   - name: gcr.io/cloud-builders/gcloud
-#     args:
-#       - '-c'
-#       - |
-#         for dagfile in $(ls dags)
-#           do
-#           gcloud composer environments storage dags import \
-#           --environment $_COMPOSER_ENV_NAME \
-#           --location $_COMPOSER_REGION \
-#           --source dags/$$dagfile
-#           done
-#     entrypoint: bash
 
-# # Build the image
-#   - name: 'gcr.io/cloud-builders/docker'
-#     args: ['build', '-t', 'gcr.io/niveustraining/my-image:v1.0', '.']
-    
-# # Push the image to GCR
-#   - name: 'gcr.io/cloud-builders/docker'
-#     args: ['push', 'gcr.io/niveustraining/my-image:v1.0']
-
-# # vulnerabiliy scan
-#   - name: 'gcr.io/cloud-builders/gcloud'
-#     args: ['beta', 'container', 'images', 'describe', 'gcr.io/niveustraining/my-image:v1.0', '--format=json']
-
-# availableSecrets:
-#   secretManager:
-#     - versionName: projects/866354246469/secrets/SSH_KEY/versions/latest
-#       env: SSH_KEY
