@@ -30,7 +30,7 @@ steps:
     
   - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
     entrypoint: 'venv/bin/python'
-    args: ['-m', 'pytest' , '--cov=dags','--cov-report=xml','-v']
+    args: ['-m', 'pytest' , '--cov=utils','--cov-report=xml','-v']
 
 #   # install coverage
 #   - name: python
