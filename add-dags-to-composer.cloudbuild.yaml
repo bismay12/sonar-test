@@ -13,7 +13,7 @@ steps:
   # run in python 3.8 which is latest version in Cloud Composer
   - name: python:3.8-slim
     entrypoint: python3.8
-    args: ["-m", "pytest", "-s", "test/",'--cov=test','--cov-report=xml','-v']
+    args: ["-m", "pytest", "-s", "dags/",'--cov=test','--cov-report=xml','-v']
 
   # install dependencies
   - name: python
