@@ -60,12 +60,12 @@ steps:
       - coverage run *.py
       - coverage xml
 
-  # - name: python:3.7
-  # entrypoint: python3
-  # id: RUN-COVERAGE-TESTS
-  # args:
-  # - '-c'
-  # - 'import sys; from pycobertura import Cobertura; cobertura = Cobertura("coverage.xml")'
+  - name: python:3.7
+    entrypoint: python3
+    id: RUN-COVERAGE-TESTS
+    args:
+      - '-c'
+      - python3 -m pytest --cov=tests/ --cov-report xml:coverag1.xml
 
 
   # Static code Analysis
@@ -77,19 +77,19 @@ steps:
     - '-Dsonar.sources=.'
     - '-Dsonar.python.coverage.reportPaths=coverage.xml'
 
-#Add dags to Dags folder
-  - name: gcr.io/cloud-builders/gcloud
-    args:
-      - '-c'
-      - |
-        for dagfile in $(ls dags)
-          do
-          gcloud composer environments storage dags import \
-          --environment $_COMPOSER_ENV_NAME \
-          --location $_COMPOSER_REGION \
-          --source dags/$$dagfile
-          done
-    entrypoint: bash
+# #Add dags to Dags folder
+#   - name: gcr.io/cloud-builders/gcloud
+#     args:
+#       - '-c'
+#       - |
+#         for dagfile in $(ls dags)
+#           do
+#           gcloud composer environments storage dags import \
+#           --environment $_COMPOSER_ENV_NAME \
+#           --location $_COMPOSER_REGION \
+#           --source dags/$$dagfile
+#           done
+#     entrypoint: bash
 
 # # Build the image
 #   - name: 'gcr.io/cloud-builders/docker'
