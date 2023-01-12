@@ -30,7 +30,7 @@ steps:
   - name: 'gcr.io/cloud-builders/git'
     args:
     - clone
-    - git@github.com:FutureGeneraliBusinessIntelligence/fgli-lumiq-dummy-dev.git
+    - git@github.com:bismay12/sonar-test.git
     volumes:
     - name: 'ssh'
       path: /root/.ssh
@@ -57,7 +57,7 @@ steps:
   # Static code Analysis
   - name: 'gcr.io/$PROJECT_ID/sonar-scanner:latest'
     args:
-    - '-Dsonar.host.url=http://35.200.250.32:9000 '
+    - '-Dsonar.host.url=http://35.244.55.55:9000/ '
     - '-Dsonar.login=sqp_78d4c4d00e71fc99a703f80d38fee3b6618ee95a'
     - '-Dsonar.projectKey=sonar-test-1 '
     - '-Dsonar.sources=.'
@@ -66,7 +66,7 @@ steps:
   
 # Build the image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/fg-dt-lumiq-dev/fg-dt-lumiq-dev:v1.2', '.']
+    args: ['build', '-t', 'gcr.io/niveustraining/airflow-image:v1.0', '.']
 
   - id: scan
     name: gcr.io/cloud-builders/gcloud
@@ -74,7 +74,7 @@ steps:
     args:
      - -c
      - |
-       gcloud artifacts docker images scan 'gcr.io/fg-dev-host/my-image6:v1.7' \
+       gcloud artifacts docker images scan 'gcr.io/niveustraining/airflow-image:v1.0' \
        --format='value(response.scan)' > /workspace/docdags/scan_id.txt
        
   - id: severity check2
@@ -117,12 +117,12 @@ steps:
     
 # Push the image to GCR
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/fg-dt-lumiq-dev/fg-dt-lumiq-dev:v1.2']
+    args: ['push', 'gcr.io/niveustraining/airflow-image:v1.0']
 
 # vulnerability scan
 
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['beta', 'container', 'images', 'describe', 'gcr.io/fg-dt-lumiq-dev/fg-dt-lumiq-dev:v1.2', '--format=json']
+    args: ['beta', 'container', 'images', 'describe', 'gcr.io/niveustraining/airflow-image:v1.0', '--format=json']
 
 # Removing the old build Dags object
   - name: 'gcr.io/cloud-builders/gsutil'
@@ -130,17 +130,17 @@ steps:
     args:
       - '-c'
       - |
-        gsutil -m rm -r gs://asia-south1-fg-dt-dev-compo-d0959efc-bucket/dags/*
+        gsutil -m rm -r gs://asia-south1-dataflow-cicd-9e8b0f8b-bucket/dags/*
   
 # Pull the Older Image and get the previous dags
-  - name: gcr.io/fg-dt-lumiq-dev/fg-dt-lumiq-dev:v1.1
+  - name: gcr.io/niveustraining/airflow-image:v1.0
     entrypoint: /bin/bash
     args:
     - -c
     - |
       if [ "$_ROLLBACK" != "false" ]
       then
-        cp -rv /Composer_Dag/*  /workspace/docdags/
+        cp -rv /dags/*  /workspace/docdags/
       fi
  # Condational Logic for Rollback and Dag updates
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -151,12 +151,12 @@ steps:
      if [ "$_ROLLBACK" != "true" ]
      then
        echo "ROLLBACK NOT REQUIRED"
-       for dagfile in $(ls Composer_Dag)
+       for dagfile in $(ls dags)
              do
             gcloud composer environments storage dags import \
             --environment $_COMPOSER_ENV_NAME \
             --location $_COMPOSER_REGION \
-            --source Composer_Dag/$$dagfile
+            --source dags/$$dagfile
             done
      fi
      
@@ -174,5 +174,5 @@ steps:
   
 availableSecrets:
     secretManager:
-    - versionName: projects/579147652001/secrets/SSH_KEY/versions/latest
+    - versionName: projects/866354246469/secrets/dataflow-cicd/versions/latest
       env: 'SSH_KEY'
