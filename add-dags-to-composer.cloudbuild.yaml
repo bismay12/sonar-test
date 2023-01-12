@@ -1,6 +1,40 @@
 steps:
 
+# - Airflow Env variables.
+substitutions:
+  _COMPOSER_REGION: asia-south1
+  _COMPOSER_ENV_NAME: dataflow-cicd
+  _ROLLBACK: 'false'
+  _SEVERITY: MEDIUM
+  _SEVERITY1: HIGH
+  _SEVERITY2: CRITICAL
+  
+# Access the id_github file from Secret Manager, and setup SSH
 steps:
+  - name: 'gcr.io/cloud-builders/git'
+    secretEnv: ['SSH_KEY']
+    entrypoint: 'bash'
+    args:
+    - -c
+    - |
+      echo "$$SSH_KEY" >> /root/.ssh/id_rsa
+      chmod 400 /root/.ssh/id_rsa
+      ssh-keyscan -t rsa github.com > known_hosts.github
+      cp known_hosts.github /root/.ssh/known_hosts
+# cat known_hosts.github 
+    volumes:
+    - name: 'ssh'
+      path: /root/.ssh
+  
+# Clone the repository
+  - name: 'gcr.io/cloud-builders/git'
+    args:
+    - clone
+    - git@github.com:FutureGeneraliBusinessIntelligence/fgli-lumiq-dummy-dev.git
+    volumes:
+    - name: 'ssh'
+      path: /root/.ssh
+      
   # install dependencies
   - name: python:3.8-slim
     entrypoint: pip
@@ -18,41 +52,7 @@ steps:
   # install dependencies
   - name: python
     entrypoint: pip
-    args: ["install", "-r", "utils/requirements.txt", "--user"]
-    
-#   - name: 'gcr.io/$PROJECT_ID/python-cloudbuild' 
-#     entrypoint: '/bin/bash'
-#     args: ['-c','virtualenv /workspace/venv' ]
-    
-#   - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
-#     entrypoint: 'venv/bin/pip'
-#     args: ['install', '-V', '-r', 'requirements1.txt']
-    
-#   - name: 'gcr.io/$PROJECT_ID/python-cloudbuild'
-#     entrypoint: 'venv/bin/python'
-#     args: ['-m', 'pytest' , '--cov=utils','--cov-report=xml','-v']
-
-#   # install coverage
-#   - name: python
-#     entrypoint: pip
-#     args: ["install","coverage"]
-
-#   # install coverage
-#   - name: python
-#     entrypoint: python
-#     args:
-#       - '-c'
-#       - |
-#       - coverage run *.py
-#       - coverage xml
-
-#   - name: python:3.7
-#     entrypoint: python3
-#     id: RUN-COVERAGE-TESTS
-#     args:
-#       - '-c'
-#       - python3 -m pytest --cov=tests/ --cov-report xml:coverag1.xml
-
+    args: ["install", "-r", "utils/requirements.txt", "--user"]    
 
   # Static code Analysis
   - name: 'gcr.io/$PROJECT_ID/sonar-scanner:latest'
@@ -63,4 +63,116 @@ steps:
     - '-Dsonar.sources=.'
     - '-Dsonar.python.coverage.reportPaths=coverage.xml'
 
+  
+# Build the image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/fg-dt-lumiq-dev/fg-dt-lumiq-dev:v1.2', '.']
 
+  - id: scan
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    args:
+     - -c
+     - |
+       gcloud artifacts docker images scan 'gcr.io/fg-dev-host/my-image6:v1.7' \
+       --format='value(response.scan)' > /workspace/docdags/scan_id.txt
+       
+  - id: severity check2
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    args:
+     - -c
+     - | 
+       gcloud artifacts docker images list-vulnerabilities \
+        $(cat /workspace/docdags/scan_id.txt) --format='value(vulnerability.effectiveSeverity)' \
+        | if grep -Fxq $_SEVERITY2 
+          then echo 'Failed vulnerability check - CRITICAL'
+          exit 1 
+          fi
+          
+  - id: severity check1
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    args:
+     - -c
+     - | 
+       gcloud artifacts docker images list-vulnerabilities \
+        $(cat /workspace/docdags/scan_id.txt) --format='value(vulnerability.effectiveSeverity)' \
+        | if grep -Fxq $_SEVERITY1
+          then echo 'Failed vulnerability check - HIGH'
+          exit 1 
+          fi
+  - id: severity check
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: /bin/bash
+    args:
+     - -c
+     - | 
+       gcloud artifacts docker images list-vulnerabilities \
+        $(cat /workspace/docdags/scan_id.txt) --format='value(vulnerability.effectiveSeverity)' \
+        | if grep -Fxq $_SEVERITY 
+          then echo 'Failed vulnerability check - MEDIUM'
+          exit 1 
+          fi
+    
+# Push the image to GCR
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/fg-dt-lumiq-dev/fg-dt-lumiq-dev:v1.2']
+
+# vulnerability scan
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['beta', 'container', 'images', 'describe', 'gcr.io/fg-dt-lumiq-dev/fg-dt-lumiq-dev:v1.2', '--format=json']
+
+# Removing the old build Dags object
+  - name: 'gcr.io/cloud-builders/gsutil'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gsutil -m rm -r gs://asia-south1-fg-dt-dev-compo-d0959efc-bucket/dags/*
+  
+# Pull the Older Image and get the previous dags
+  - name: gcr.io/fg-dt-lumiq-dev/fg-dt-lumiq-dev:v1.1
+    entrypoint: /bin/bash
+    args:
+    - -c
+    - |
+      if [ "$_ROLLBACK" != "false" ]
+      then
+        cp -rv /Composer_Dag/*  /workspace/docdags/
+      fi
+ # Condational Logic for Rollback and Dag updates
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+    - -c
+    - |
+     if [ "$_ROLLBACK" != "true" ]
+     then
+       echo "ROLLBACK NOT REQUIRED"
+       for dagfile in $(ls Composer_Dag)
+             do
+            gcloud composer environments storage dags import \
+            --environment $_COMPOSER_ENV_NAME \
+            --location $_COMPOSER_REGION \
+            --source Composer_Dag/$$dagfile
+            done
+     fi
+     
+     if [ "$_ROLLBACK" != "false" ]
+     then
+       echo "ROLLBACK In PROGRESS"
+       for dagfile in $(ls /workspace/docdags)
+       do
+            gcloud composer environments storage dags import \
+            --environment $_COMPOSER_ENV_NAME \
+            --location $_COMPOSER_REGION \
+            --source /workspace/docdags/$$dagfile
+       done
+     fi
+  
+availableSecrets:
+    secretManager:
+    - versionName: projects/579147652001/secrets/SSH_KEY/versions/latest
+      env: 'SSH_KEY'
