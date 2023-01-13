@@ -3,7 +3,7 @@ steps:
 # - Airflow Env variables.
 substitutions:
   _COMPOSER_REGION: asia-south1
-  _COMPOSER_ENV_NAME: dataflow-cicd
+  _COMPOSER_ENV_NAME: airflow-cicd1
   _ROLLBACK: 'false'
 #   _SEVERITY: MEDIUM
 #   _SEVERITY1: HIGH
@@ -130,7 +130,7 @@ steps:
     args:
       - '-c'
       - |
-        gsutil -m rm -r gs://asia-south1-dataflow-cicd-9e8b0f8b-bucket/dags/*
+        gsutil -m rm -r gs://asia-south1-airflow-cicd1-99651280-bucket/dags/*
   
 # Pull the Older Image and get the previous dags
   - name: gcr.io/niveustraining/airflow-image:v1.0
